@@ -1,0 +1,13 @@
+# Internal planning (do not push)
+Plan/
+
+# Keep the submission .docx; ignore the generator helper
+Documents/_gen_spec_docx.py
+Documents/Citu_Language_Specification_clean.docx
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+~$*
