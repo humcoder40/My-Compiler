@@ -1,0 +1,14 @@
+khali asal() shro
+    int qeemat1;
+    int qeemat2;
+    int jama;
+
+    dikhao("Enter first number: ");
+    poocho(qeemat1);
+
+    dikhao("Enter second number: ");
+    poocho(qeemat2);
+
+    jama medalo qeemat1 + qeemat2;
+    dikhao("Total sum is: ", jama);
+khatam

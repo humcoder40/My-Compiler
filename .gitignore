@@ -5,6 +5,11 @@ Plan/
 Documents/_gen_spec_docx.py
 Documents/Citu_Language_Specification_clean.docx
 
+# build junk
+*.exe
+*.o
+*.obj
+
 # OS / editor junk
 .DS_Store
 Thumbs.db
