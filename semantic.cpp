@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 using namespace std;
@@ -14,7 +15,15 @@ struct SymbolEntry {
     vector<string> parameterTypes;
 };
 
+struct Tok {
+    int line;
+    string type;
+    string lex;
+};
+
 vector<SymbolEntry> symbolTable;
+vector<Tok> toks;
+int pos = 0;
 
 SymbolEntry makeEmptyEntry() {
     SymbolEntry e;
@@ -33,10 +42,6 @@ SymbolEntry makeVarEntry(string name, string dataType, string scope) {
     e.name = name;
     e.dataType = dataType;
     e.scope = scope;
-    e.isFunction = false;
-    e.isStruct = false;
-    e.isArray = false;
-    e.arraySize = 0;
     return e;
 }
 
@@ -45,8 +50,6 @@ SymbolEntry makeArrayEntry(string name, string dataType, string scope, int size)
     e.name = name;
     e.dataType = dataType;
     e.scope = scope;
-    e.isFunction = false;
-    e.isStruct = false;
     e.isArray = true;
     e.arraySize = size;
     return e;
@@ -58,9 +61,6 @@ SymbolEntry makeFuncEntry(string name, string dataType, string scope) {
     e.dataType = dataType;
     e.scope = scope;
     e.isFunction = true;
-    e.isStruct = false;
-    e.isArray = false;
-    e.arraySize = 0;
     return e;
 }
 
@@ -69,10 +69,7 @@ SymbolEntry makeStructEntry(string name, string scope) {
     e.name = name;
     e.dataType = name;
     e.scope = scope;
-    e.isFunction = false;
     e.isStruct = true;
-    e.isArray = false;
-    e.arraySize = 0;
     return e;
 }
 
@@ -134,6 +131,13 @@ void printOneSymbol(const SymbolEntry& e) {
     if (e.isArray) {
         cout << " size=" << e.arraySize;
     }
+    if (e.isFunction && e.parameterTypes.size() > 0) {
+        cout << " params=";
+        for (int i = 0; i < (int)e.parameterTypes.size(); i++) {
+            cout << e.parameterTypes[i];
+            if (i + 1 < (int)e.parameterTypes.size()) cout << ",";
+        }
+    }
     cout << endl;
 }
 
@@ -149,52 +153,312 @@ void addParamType(SymbolEntry& e, string t) {
     e.parameterTypes.push_back(t);
 }
 
-string paramTypesToString(const SymbolEntry& e) {
-    string s = "";
-    for (int i = 0; i < (int)e.parameterTypes.size(); i++) {
-        s = s + e.parameterTypes[i];
-        if (i + 1 < (int)e.parameterTypes.size()) s = s + ",";
+string trimSpaces(string s) {
+    while (s.size() > 0 && (s[0] == ' ' || s[0] == '\t')) s.erase(0, 1);
+    while (s.size() > 0 && (s[s.size() - 1] == ' ' || s[s.size() - 1] == '\t' || s[s.size() - 1] == '\r')) {
+        s.erase(s.size() - 1, 1);
     }
     return s;
 }
 
-void demoFillFakeSymbols() {
+bool parseTokenLine(const string& line, Tok& out) {
+    if (line.size() < 5) return false;
+    if (line[0] != '<') return false;
+    if (line[line.size() - 1] != '>') return false;
+    string inside = line.substr(1, line.size() - 2);
+    int c1 = -1;
+    int c2 = -1;
+    for (int i = 0; i < (int)inside.size(); i++) {
+        if (inside[i] == ',') {
+            if (c1 == -1) c1 = i;
+            else if (c2 == -1) {
+                c2 = i;
+                break;
+            }
+        }
+    }
+    if (c1 < 0 || c2 < 0) return false;
+    string a = trimSpaces(inside.substr(0, c1));
+    string b = trimSpaces(inside.substr(c1 + 1, c2 - c1 - 1));
+    string c = trimSpaces(inside.substr(c2 + 1));
+    out.line = 0;
+    for (int i = 0; i < (int)a.size(); i++) {
+        if (a[i] >= '0' && a[i] <= '9') out.line = out.line * 10 + (a[i] - '0');
+    }
+    out.type = b;
+    out.lex = c;
+    return true;
+}
+
+vector<Tok> readTokensFile(const string& path) {
+    vector<Tok> result;
+    ifstream fin(path.c_str());
+    if (!fin.is_open()) {
+        cout << "cant open " << path << endl;
+        return result;
+    }
+    string line;
+    while (getline(fin, line)) {
+        if (line.size() == 0) continue;
+        Tok t;
+        if (parseTokenLine(line, t)) result.push_back(t);
+    }
+    fin.close();
+    return result;
+}
+
+bool atEnd() {
+    return pos >= (int)toks.size();
+}
+
+Tok cur() {
+    if (atEnd()) {
+        Tok t;
+        t.line = -1;
+        t.type = "EOF";
+        t.lex = "";
+        return t;
+    }
+    return toks[pos];
+}
+
+Tok look(int n) {
+    if (pos + n >= (int)toks.size()) {
+        Tok t;
+        t.line = -1;
+        t.type = "EOF";
+        t.lex = "";
+        return t;
+    }
+    return toks[pos + n];
+}
+
+Tok eat() {
+    Tok t = cur();
+    if (!atEnd()) pos++;
+    return t;
+}
+
+bool isTypeTok(const string& t) {
+    if (t == "KEYWORD_INT") return true;
+    if (t == "KEYWORD_FLOAT") return true;
+    if (t == "KEYWORD_CHAR") return true;
+    if (t == "KEYWORD_KHALI") return true;
+    return false;
+}
+
+int stringToInt(const string& s) {
+    int n = 0;
+    for (int i = 0; i < (int)s.size(); i++) {
+        if (s[i] >= '0' && s[i] <= '9') n = n * 10 + (s[i] - '0');
+    }
+    return n;
+}
+
+void skipUntilKhatamSemi() {
+    int depth = 0;
+    while (!atEnd()) {
+        if (cur().type == "PUNCT_SHRO") depth++;
+        if (cur().type == "PUNCT_KHATAM") {
+            eat();
+            if (depth <= 1) {
+                if (cur().type == "PUNCT_SEMI") eat();
+                return;
+            }
+            depth--;
+            continue;
+        }
+        eat();
+    }
+}
+
+void collectParamsInto(SymbolEntry& fn) {
+    while (!atEnd() && cur().type != "PUNCT_RPAREN") {
+        if (isTypeTok(cur().type)) {
+            string ptype = cur().lex;
+            eat();
+            if (cur().type == "IDENTIFIER") {
+                string pname = cur().lex;
+                eat();
+                addParamType(fn, ptype);
+                addSymbol(makeVarEntry(pname, ptype, fn.name));
+            }
+        } else {
+            eat();
+        }
+    }
+}
+
+void collectStructFields(string structName) {
+    while (!atEnd() && cur().type != "PUNCT_KHATAM") {
+        if (isTypeTok(cur().type)) {
+            string ftype = cur().lex;
+            eat();
+            if (cur().type != "IDENTIFIER") continue;
+            string fname = cur().lex;
+            eat();
+            if (cur().type == "PUNCT_LBRACK") {
+                eat();
+                int sz = 0;
+                if (cur().type == "NUM_LITERAL") {
+                    sz = stringToInt(cur().lex);
+                    eat();
+                }
+                if (cur().type == "PUNCT_RBRACK") eat();
+                if (cur().type == "PUNCT_SEMI") eat();
+                addSymbol(makeArrayEntry(fname, ftype, structName, sz));
+            } else {
+                if (cur().type == "PUNCT_SEMI") eat();
+                addSymbol(makeVarEntry(fname, ftype, structName));
+            }
+        } else {
+            eat();
+        }
+    }
+}
+
+void fillSymbolTableFromTokens() {
     clearSymbolTable();
+    pos = 0;
+    string scope = "global";
+    int blockDepth = 0;
 
-    SymbolEntry f = makeFuncEntry("asal", "khali", "global");
-    addSymbol(f);
+    while (!atEnd()) {
+        if (cur().type == "KEYWORD_DHANCHA") {
+            eat();
+            if (cur().type != "IDENTIFIER") continue;
+            string firstId = cur().lex;
+            eat();
 
-    SymbolEntry v1 = makeVarEntry("qeemat1", "int", "asal");
-    addSymbol(v1);
+            if (cur().type == "PUNCT_SHRO") {
+                addSymbol(makeStructEntry(firstId, "global"));
+                eat();
+                collectStructFields(firstId);
+                if (cur().type == "PUNCT_KHATAM") eat();
+                if (cur().type == "PUNCT_SEMI") eat();
+                continue;
+            }
 
-    SymbolEntry v2 = makeVarEntry("jama", "int", "asal");
-    addSymbol(v2);
+            if (cur().type == "IDENTIFIER") {
+                string varName = cur().lex;
+                eat();
+                if (cur().type == "PUNCT_LBRACK") {
+                    eat();
+                    int sz = 0;
+                    if (cur().type == "NUM_LITERAL") {
+                        sz = stringToInt(cur().lex);
+                        eat();
+                    }
+                    if (cur().type == "PUNCT_RBRACK") eat();
+                    if (cur().type == "PUNCT_SEMI") eat();
+                    SymbolEntry e = makeArrayEntry(varName, firstId, scope, sz);
+                    addSymbol(e);
+                } else {
+                    if (cur().type == "PUNCT_SEMI") eat();
+                    addSymbol(makeVarEntry(varName, firstId, scope));
+                }
+                continue;
+            }
+            continue;
+        }
 
-    SymbolEntry arr = makeArrayEntry("a", "int", "asal", 5);
-    addSymbol(arr);
+        if (isTypeTok(cur().type)) {
+            string dtype = cur().lex;
+            eat();
+            if (cur().type != "IDENTIFIER") continue;
+            string name = cur().lex;
+            eat();
 
-    SymbolEntry st = makeStructEntry("Student", "global");
-    addSymbol(st);
+            if (cur().type == "PUNCT_LPAREN") {
+                SymbolEntry fn = makeFuncEntry(name, dtype, "global");
+                eat();
+                collectParamsInto(fn);
+                if (cur().type == "PUNCT_RPAREN") eat();
+                addSymbol(fn);
+                if (cur().type == "PUNCT_SHRO") {
+                    eat();
+                    scope = name;
+                    blockDepth = 1;
+                }
+                continue;
+            }
+
+            if (cur().type == "PUNCT_LBRACK") {
+                eat();
+                int sz = 0;
+                if (cur().type == "NUM_LITERAL") {
+                    sz = stringToInt(cur().lex);
+                    eat();
+                }
+                if (cur().type == "PUNCT_RBRACK") eat();
+                if (cur().type == "PUNCT_SEMI") eat();
+                addSymbol(makeArrayEntry(name, dtype, scope, sz));
+                continue;
+            }
+
+            if (cur().type == "PUNCT_SEMI") {
+                eat();
+                addSymbol(makeVarEntry(name, dtype, scope));
+                continue;
+            }
+            continue;
+        }
+
+        if (cur().type == "PUNCT_SHRO") {
+            eat();
+            if (scope != "global") blockDepth++;
+            continue;
+        }
+
+        if (cur().type == "PUNCT_KHATAM") {
+            eat();
+            if (scope != "global") {
+                blockDepth--;
+                if (blockDepth <= 0) {
+                    scope = "global";
+                    blockDepth = 0;
+                }
+            }
+            continue;
+        }
+
+        eat();
+    }
+}
+
+void writeSymbolsFile(const string& path) {
+    ofstream fout(path.c_str());
+    if (!fout.is_open()) {
+        cout << "cant write " << path << endl;
+        return;
+    }
+    for (int i = 0; i < (int)symbolTable.size(); i++) {
+        SymbolEntry e = symbolTable[i];
+        fout << e.name << " | " << e.dataType << " | " << e.scope << " | " << entryKindLabel(e);
+        if (e.isArray) fout << " | size=" << e.arraySize;
+        fout << "\n";
+    }
+    fout.close();
 }
 
 int main() {
-    cout << "Citu Semantic Analyzer - commit 1" << endl;
-    cout << "symbol table skeleton only" << endl;
+    string inputFile = "tokens.txt";
+    string outputFile = "symbols.txt";
 
-    demoFillFakeSymbols();
-    printSymbolTable();
+    cout << "Citu Semantic Analyzer - commit 2" << endl;
+    cout << "fill symbol table from declarations" << endl;
+    cout << "reading: " << inputFile << endl;
 
-    cout << "lookup jama in asal: ";
-    if (symbolExists("jama", "asal")) {
-        int idx = findSymbolIndex("jama", "asal");
-        printOneSymbol(getSymbolAt(idx));
-    } else {
-        cout << "not found" << endl;
+    toks = readTokensFile(inputFile);
+    if (toks.size() == 0) {
+        cout << "no tokens (run lexer first)" << endl;
+        return 1;
     }
 
-    cout << "lookup noor in asal: ";
-    if (symbolExists("noor", "asal")) cout << "found" << endl;
-    else cout << "not found" << endl;
+    fillSymbolTableFromTokens();
+    printSymbolTable();
+    writeSymbolsFile(outputFile);
+    cout << "wrote " << outputFile << endl;
 
     return 0;
 }

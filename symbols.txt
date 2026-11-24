@@ -1,0 +1,4 @@
+asal | khali | global | function
+qeemat1 | int | asal | var
+qeemat2 | int | asal | var
+jama | int | asal | var
