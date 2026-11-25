@@ -300,6 +300,38 @@ bool isNumType(const string& t) {
     return false;
 }
 
+bool isStructTypeName(string typeName) {
+    int idx = findSymbolIndex(typeName, "global");
+    if (idx == -1) return false;
+    return getSymbolAt(idx).isStruct;
+}
+
+int findFieldIndex(string structType, string fieldName) {
+    return findSymbolIndex(fieldName, structType);
+}
+
+bool fieldExistsOnStruct(string structType, string fieldName) {
+    return findFieldIndex(structType, fieldName) != -1;
+}
+
+SymbolEntry getFieldEntry(string structType, string fieldName) {
+    int idx = findFieldIndex(structType, fieldName);
+    return getSymbolAt(idx);
+}
+
+string checkMemberAccess(string structType, string fieldName, int line) {
+    if (!isStructTypeName(structType)) {
+        addErrorLine(line, "'" + structType + "' is not a dhancha type");
+        return "";
+    }
+    if (!fieldExistsOnStruct(structType, fieldName)) {
+        addErrorLine(line, "dhancha '" + structType + "' has no member '" + fieldName + "'");
+        return "";
+    }
+    SymbolEntry f = getFieldEntry(structType, fieldName);
+    return f.dataType;
+}
+
 bool typesCompatible(string a, string b) {
     if (a == "") return true;
     if (b == "") return true;
@@ -514,9 +546,16 @@ string typeOfPrimaryAt(int i, string scope, int& endPos) {
             if (toks[j].type == "PUNCT_DOT") {
                 j++;
                 if (j < (int)toks.size() && toks[j].type == "IDENTIFIER") {
+                    string field = toks[j].lex;
+                    string fieldType = checkMemberAccess(t, field, toks[j].line);
+                    if (fieldType != "") t = fieldType;
+                    else t = "";
                     endPos = j;
                     j++;
-                } else break;
+                } else {
+                    addErrorLine(toks[j - 1].line, "expected member name after '.'");
+                    break;
+                }
             } else if (toks[j].type == "PUNCT_LBRACK") {
                 j++;
                 int idxEnd = j;
@@ -691,22 +730,31 @@ void runScopeAndTypeChecks() {
 
         if (toks[i].type == "IDENTIFIER" && !isDeclNamePosition(i)) {
             int j = i + 1;
-            bool isAssign = false;
-            int k = i;
+            bool willAssign = false;
+            while (j < (int)toks.size()) {
+                if (toks[j].type == "PUNCT_DOT") {
+                    j++;
+                    if (j < (int)toks.size() && toks[j].type == "IDENTIFIER") j++;
+                } else if (toks[j].type == "PUNCT_LBRACK") {
+                    j++;
+                    while (j < (int)toks.size() && toks[j].type != "PUNCT_RBRACK") j++;
+                    if (j < (int)toks.size()) j++;
+                } else if (toks[j].type == "OP_MEDALO") {
+                    willAssign = true;
+                    break;
+                } else break;
+            }
+
+            if (willAssign) {
+                checkAssignment(i, scope);
+                while (i < (int)toks.size() && toks[i].type != "PUNCT_SEMI") i++;
+                if (i < (int)toks.size() && toks[i].type == "PUNCT_SEMI") i++;
+                continue;
+            }
+
             int tmpEnd = i;
             typeOfPrimaryAt(i, scope, tmpEnd);
-            k = tmpEnd + 1;
-            if (k < (int)toks.size() && toks[k].type == "OP_MEDALO") {
-                isAssign = true;
-                checkAssignment(i, scope);
-            } else if (!symbolVisible(toks[i].lex, scope)) {
-                if (!(i + 1 < (int)toks.size() && toks[i + 1].type == "PUNCT_LPAREN")) {
-                }
-            }
             i = tmpEnd + 1;
-            if (isAssign) {
-                while (i < (int)toks.size() && toks[i].type != "PUNCT_SEMI") i++;
-            }
             continue;
         }
 
@@ -759,13 +807,37 @@ void writeErrorsFile(const string& path) {
     fout.close();
 }
 
+void writeReportFile(const string& path) {
+    ofstream fout(path.c_str());
+    if (!fout.is_open()) return;
+    fout << "Citu Semantic Report\n";
+    fout << "symbols: " << symbolTableSize() << "\n";
+    fout << "errors: " << errorCount() << "\n";
+    if (errorCount() == 0) fout << "result: OK\n";
+    else fout << "result: FAILED\n";
+    fout << "--- errors ---\n";
+    for (int i = 0; i < (int)errors.size(); i++) {
+        fout << errors[i] << "\n";
+    }
+    fout.close();
+}
+
+void printFinalReport() {
+    cout << "=== semantic report ===" << endl;
+    cout << "symbols collected: " << symbolTableSize() << endl;
+    cout << "errors found: " << errorCount() << endl;
+    if (errorCount() == 0) cout << "result: OK" << endl;
+    else cout << "result: FAILED" << endl;
+}
+
 int main() {
     string inputFile = "tokens.txt";
     string outputFile = "symbols.txt";
     string errFile = "semantic_errors.txt";
+    string reportFile = "semantic_report.txt";
 
-    cout << "Citu Semantic Analyzer - commit 3" << endl;
-    cout << "scope + undeclared/redeclare + basic type checks" << endl;
+    cout << "Citu Semantic Analyzer - commit 4" << endl;
+    cout << "dhancha members + final report" << endl;
     cout << "reading: " << inputFile << endl;
 
     clearErrors();
@@ -780,12 +852,12 @@ int main() {
 
     printSymbolTable();
     printErrors();
+    printFinalReport();
+
     writeSymbolsFile(outputFile);
     writeErrorsFile(errFile);
+    writeReportFile(reportFile);
 
-    if (errorCount() == 0) cout << "semantic checks: OK" << endl;
-    else cout << "semantic checks: FAILED" << endl;
-
-    cout << "wrote " << outputFile << " and " << errFile << endl;
+    cout << "wrote " << outputFile << ", " << errFile << ", " << reportFile << endl;
     return 0;
 }

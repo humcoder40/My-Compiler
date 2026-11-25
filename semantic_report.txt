@@ -1,0 +1,5 @@
+Citu Semantic Report
+symbols: 4
+errors: 0
+result: OK
+--- errors ---

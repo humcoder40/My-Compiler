@@ -2,32 +2,6 @@
   "nodeType": "PROGRAM_NODE",
   "children": [
     {
-      "nodeType": "STRUCT_DECL_NODE",
-      "value": "Student",
-      "children": [
-        {
-          "nodeType": "VAR_DECL_NODE",
-          "value": "id",
-          "children": [
-            {
-              "nodeType": "TYPE_NODE",
-              "value": "int"
-            }
-          ]
-        },
-        {
-          "nodeType": "VAR_DECL_NODE",
-          "value": "marks",
-          "children": [
-            {
-              "nodeType": "TYPE_NODE",
-              "value": "float"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "nodeType": "FUNC_DECL_NODE",
       "value": "asal",
       "children": [
@@ -42,12 +16,68 @@
           "nodeType": "BLOCK_NODE",
           "children": [
             {
-              "nodeType": "STRUCT_VAR_DECL_NODE",
-              "value": "s1",
+              "nodeType": "VAR_DECL_NODE",
+              "value": "qeemat1",
               "children": [
                 {
                   "nodeType": "TYPE_NODE",
-                  "value": "Student"
+                  "value": "int"
+                }
+              ]
+            },
+            {
+              "nodeType": "VAR_DECL_NODE",
+              "value": "qeemat2",
+              "children": [
+                {
+                  "nodeType": "TYPE_NODE",
+                  "value": "int"
+                }
+              ]
+            },
+            {
+              "nodeType": "VAR_DECL_NODE",
+              "value": "jama",
+              "children": [
+                {
+                  "nodeType": "TYPE_NODE",
+                  "value": "int"
+                }
+              ]
+            },
+            {
+              "nodeType": "PRINT_NODE",
+              "children": [
+                {
+                  "nodeType": "STR_LITERAL_NODE",
+                  "value": "Enter first number:"
+                }
+              ]
+            },
+            {
+              "nodeType": "INPUT_NODE",
+              "children": [
+                {
+                  "nodeType": "IDENTIFIER_NODE",
+                  "value": "qeemat1"
+                }
+              ]
+            },
+            {
+              "nodeType": "PRINT_NODE",
+              "children": [
+                {
+                  "nodeType": "STR_LITERAL_NODE",
+                  "value": "Enter second number:"
+                }
+              ]
+            },
+            {
+              "nodeType": "INPUT_NODE",
+              "children": [
+                {
+                  "nodeType": "IDENTIFIER_NODE",
+                  "value": "qeemat2"
                 }
               ]
             },
@@ -56,152 +86,35 @@
               "value": "medalo",
               "children": [
                 {
-                  "nodeType": "MEMBER_ACCESS_NODE",
-                  "value": "id",
+                  "nodeType": "IDENTIFIER_NODE",
+                  "value": "jama"
+                },
+                {
+                  "nodeType": "EXPRESSION_NODE",
+                  "value": "+",
                   "children": [
                     {
                       "nodeType": "IDENTIFIER_NODE",
-                      "value": "s1"
+                      "value": "qeemat1"
                     },
                     {
                       "nodeType": "IDENTIFIER_NODE",
-                      "value": "id"
+                      "value": "qeemat2"
                     }
                   ]
-                },
-                {
-                  "nodeType": "NUM_LITERAL_NODE",
-                  "value": "101"
                 }
               ]
             },
             {
-              "nodeType": "ASSIGNMENT_NODE",
-              "value": "medalo",
+              "nodeType": "PRINT_NODE",
               "children": [
                 {
-                  "nodeType": "MEMBER_ACCESS_NODE",
-                  "value": "marks",
-                  "children": [
-                    {
-                      "nodeType": "IDENTIFIER_NODE",
-                      "value": "s1"
-                    },
-                    {
-                      "nodeType": "IDENTIFIER_NODE",
-                      "value": "marks"
-                    }
-                  ]
+                  "nodeType": "STR_LITERAL_NODE",
+                  "value": "Total sum is:"
                 },
                 {
-                  "nodeType": "FLOAT_LITERAL_NODE",
-                  "value": "85.5"
-                }
-              ]
-            },
-            {
-              "nodeType": "SWITCH_NODE",
-              "children": [
-                {
-                  "nodeType": "MEMBER_ACCESS_NODE",
-                  "value": "id",
-                  "children": [
-                    {
-                      "nodeType": "IDENTIFIER_NODE",
-                      "value": "s1"
-                    },
-                    {
-                      "nodeType": "IDENTIFIER_NODE",
-                      "value": "id"
-                    }
-                  ]
-                },
-                {
-                  "nodeType": "BLOCK_NODE",
-                  "children": [
-                    {
-                      "nodeType": "CASE_NODE",
-                      "value": "101",
-                      "children": [
-                        {
-                          "nodeType": "BLOCK_NODE",
-                          "children": [
-                            {
-                              "nodeType": "PRINT_NODE",
-                              "children": [
-                                {
-                                  "nodeType": "STR_LITERAL_NODE",
-                                  "value": "Student 101 found with marks:"
-                                },
-                                {
-                                  "nodeType": "MEMBER_ACCESS_NODE",
-                                  "value": "marks",
-                                  "children": [
-                                    {
-                                      "nodeType": "IDENTIFIER_NODE",
-                                      "value": "s1"
-                                    },
-                                    {
-                                      "nodeType": "IDENTIFIER_NODE",
-                                      "value": "marks"
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
-                              "nodeType": "BREAK_NODE"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "nodeType": "CASE_NODE",
-                      "value": "102",
-                      "children": [
-                        {
-                          "nodeType": "BLOCK_NODE",
-                          "children": [
-                            {
-                              "nodeType": "PRINT_NODE",
-                              "children": [
-                                {
-                                  "nodeType": "STR_LITERAL_NODE",
-                                  "value": "Student 102 found."
-                                }
-                              ]
-                            },
-                            {
-                              "nodeType": "BREAK_NODE"
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "nodeType": "DEFAULT_NODE",
-                      "children": [
-                        {
-                          "nodeType": "BLOCK_NODE",
-                          "children": [
-                            {
-                              "nodeType": "PRINT_NODE",
-                              "children": [
-                                {
-                                  "nodeType": "STR_LITERAL_NODE",
-                                  "value": "Unknown student ID."
-                                }
-                              ]
-                            },
-                            {
-                              "nodeType": "BREAK_NODE"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
+                  "nodeType": "IDENTIFIER_NODE",
+                  "value": "jama"
                 }
               ]
             }
